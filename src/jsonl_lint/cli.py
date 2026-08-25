@@ -12,6 +12,11 @@ from jsonl_lint.core import Report, check
 EXIT_OK = 0
 EXIT_PROBLEMS = 1
 EXIT_USAGE = 2
+#: A file that could not be read is worse news than a file with bad content:
+#: it means the run did not check what the caller thought it checked. It gets
+#: its own code so CI can tell "your dataset is broken" from "your path is
+#: wrong" without scraping stderr.
+EXIT_IO = 3
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +80,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     paths = args.paths or ["-"]
     failed = False
+    io_failed = False
 
     for path in paths:
         try:
@@ -97,7 +103,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 label = path
         except OSError as error:
             print(f"jsonl-lint: {path}: {error.strerror}", file=sys.stderr)
-            failed = True
+            io_failed = True
+            # Keep going: with a glob, one unreadable file should not hide
+            # problems in the files that did open.
             continue
 
         if not report.ok:
@@ -105,6 +113,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.quiet:
             _render(label, report, max_problems=args.max_problems, stream=sys.stdout)
 
+    if io_failed:
+        return EXIT_IO
     return EXIT_PROBLEMS if failed else EXIT_OK
 
 
