@@ -31,6 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="also reject lines that parse but are not JSON objects",
     )
     parser.add_argument(
+        "--check-duplicates",
+        action="store_true",
+        help="also report records that repeat an earlier line, ignoring key order",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
@@ -74,13 +79,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     for path in paths:
         try:
             if path == "-":
-                report = check(sys.stdin, require_object=args.require_object)
+                report = check(
+                    sys.stdin,
+                    require_object=args.require_object,
+                    check_duplicates=args.check_duplicates,
+                )
                 label = "<stdin>"
             else:
                 # newline="" keeps \r visible so a CRLF file is reported rather
                 # than silently normalised by universal newline translation.
                 with open(path, encoding="utf-8", newline="") as handle:
-                    report = check(handle, require_object=args.require_object)
+                    report = check(
+                        handle,
+                        require_object=args.require_object,
+                        check_duplicates=args.check_duplicates,
+                    )
                 label = path
         except OSError as error:
             print(f"jsonl-lint: {path}: {error.strerror}", file=sys.stderr)

@@ -96,3 +96,50 @@ def test_check_accepts_a_generator():
     report = check(line for line in ['{"a": 1}', "nope"])
     assert report.records == 2
     assert len(report.problems) == 1
+
+
+def test_duplicates_are_off_by_default():
+    assert codes(['{"a": 1}', '{"a": 1}']) == []
+
+
+def test_duplicate_reports_the_line_it_first_appeared_on():
+    (problem,) = list(iter_problems(['{"a": 1}', '{"a": 1}'], check_duplicates=True))
+    assert problem.line == 2
+    assert problem.code == "duplicate"
+    assert "line 1" in problem.message
+
+
+def test_duplicate_ignores_key_order():
+    assert codes(['{"a": 1, "b": 2}', '{"b": 2, "a": 1}'], check_duplicates=True) == ["duplicate"]
+
+
+def test_duplicate_ignores_insignificant_whitespace():
+    assert codes(['{"a": 1}', '{"a":1}'], check_duplicates=True) == ["duplicate"]
+
+
+def test_every_repeat_is_reported_against_the_first_occurrence():
+    problems = list(iter_problems(['{"a": 1}'] * 3, check_duplicates=True))
+    assert [p.line for p in problems] == [2, 3]
+    assert all("line 1" in p.message for p in problems)
+
+
+def test_distinct_records_are_not_duplicates():
+    assert codes(['{"a": 1}', '{"a": 2}', '{"b": 1}'], check_duplicates=True) == []
+
+
+def test_duplicate_detection_works_for_non_object_values():
+    assert codes(["[1, 2]", "[1, 2]"], check_duplicates=True) == ["duplicate"]
+
+
+def test_unparseable_lines_are_not_considered_for_duplication():
+    # A line that failed to parse has no value to compare, so it must not
+    # collide with another unparseable line.
+    assert codes(["nope", "nope"], check_duplicates=True) == ["invalid-json"] * 2
+
+
+def test_duplicate_and_require_object_compose():
+    assert codes(["[1]", "[1]"], require_object=True, check_duplicates=True) == [
+        "not-an-object",
+        "not-an-object",
+        "duplicate",
+    ]

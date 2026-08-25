@@ -30,6 +30,7 @@ jsonl-lint train.jsonl                  # one file
 jsonl-lint data/*.jsonl                 # many; every one is checked
 cat train.jsonl | jsonl-lint            # or stdin
 jsonl-lint --require-object train.jsonl # reject lines that aren't JSON objects
+jsonl-lint --check-duplicates train.jsonl  # report repeated records
 jsonl-lint --quiet train.jsonl          # exit code only, for CI
 jsonl-lint --max-problems 20 big.jsonl  # cap the noise
 ```
@@ -49,9 +50,15 @@ jsonl-lint --max-problems 20 big.jsonl  # cap the noise
 | `bom` | the file begins with a UTF-8 byte-order mark |
 | `whitespace` | the line has leading or trailing whitespace |
 | `not-an-object` | the line parses but is not a JSON object — only with `--require-object` |
+| `duplicate` | the record repeats an earlier line — only with `--check-duplicates` |
 
 `--require-object` is opt-in because JSONL permits any JSON value per line, while most
 consumers of it (fine-tuning and eval APIs in particular) accept only objects.
+
+`--check-duplicates` compares the *parsed* value with `sort_keys`, so two records that
+differ only in key order or insignificant whitespace are still reported as duplicates.
+Lines that failed to parse are never treated as duplicates of one another. It holds one
+fingerprint per distinct record in memory, so it costs roughly the size of the file.
 
 A byte-order mark is only reported on line 1, where it is a real file-level artifact. One
 appearing mid-file is a parse error, and is reported as such.
@@ -79,7 +86,7 @@ with open("train.jsonl", encoding="utf-8") as handle:
 
 | Export | Purpose |
 | --- | --- |
-| `check(lines, *, require_object=False)` | Returns a `Report` with `.problems`, `.records`, `.ok`, `.codes()`. |
+| `check(lines, *, require_object=False, check_duplicates=False)` | Returns a `Report` with `.problems`, `.records`, `.ok`, `.codes()`. |
 | `iter_problems(lines, ...)` | Streams `Problem`s without building a report. |
 | `load(lines)` | Yields parsed values, skipping blanks. Raises on the first bad line. |
 | `Problem` | `line` (1-based), `code`, `message`. |

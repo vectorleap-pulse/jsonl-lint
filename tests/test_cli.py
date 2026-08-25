@@ -98,3 +98,15 @@ def test_stdin_is_read_when_no_path_is_given(monkeypatch, capsys):
 def test_crlf_file_is_not_reported_as_whitespace(jsonl, capsys):
     path = jsonl("crlf.jsonl", '{"a": 1}\r\n{"a": 2}\r\n')
     assert main([path]) == EXIT_OK
+
+
+def test_check_duplicates_flag_is_passed_through(jsonl):
+    path = jsonl("dupes.jsonl", '{"a": 1}\n{"a": 1}\n')
+    assert main([path]) == EXIT_OK
+    assert main([path, "--check-duplicates"]) == EXIT_PROBLEMS
+
+
+def test_duplicate_appears_in_the_summary(jsonl, capsys):
+    path = jsonl("dupes.jsonl", '{"a": 1}\n{"a": 1}\n')
+    main([path, "--check-duplicates"])
+    assert "duplicate=1" in capsys.readouterr().out
