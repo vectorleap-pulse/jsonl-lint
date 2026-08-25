@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from jsonl_lint import __version__
 from jsonl_lint.core import Report, check

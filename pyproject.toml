@@ -29,6 +29,9 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
+# Pin explicitly so a newer ruff in CI cannot infer a different target and
+# start flagging rules the local run did not.
+target-version = "py39"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

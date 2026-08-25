@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 #: A byte-order mark on the first line is the single most common cause of a
 #: JSONL file that "looks fine" in an editor but fails to parse.
