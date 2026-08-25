@@ -70,7 +70,7 @@ with open("train.jsonl", encoding="utf-8") as handle:
 if not report.ok:
     for problem in report.problems:
         print(problem.line, problem.code, problem.message)
-    print(report.codes())      # {'invalid-json': 2, 'blank': 1}
+    print(report.codes())  # {'invalid-json': 2, 'blank': 1}
 
 # Parse a file you have already checked.
 with open("train.jsonl", encoding="utf-8") as handle:

@@ -22,16 +22,20 @@ classifiers = [
 jsonl-lint = "jsonl_lint.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff"]
+dev = ["pytest>=7", "ruff==0.16.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.ruff]
 line-length = 100
-# Pin explicitly so a newer ruff in CI cannot infer a different target and
-# start flagging rules the local run did not.
 target-version = "py39"
+
+[tool.ruff.lint]
+# Selected explicitly, and the ruff version is pinned in the dev extra.
+# Relying on ruff's defaults means a release that widens them turns a green
+# build red without anything in this repo changing.
+select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
