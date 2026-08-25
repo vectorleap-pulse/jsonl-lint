@@ -38,8 +38,13 @@ jsonl-lint --max-problems 20 big.jsonl  # cap the noise
 | Exit code | Meaning |
 | --- | --- |
 | `0` | every file was clean |
-| `1` | at least one problem, or a file could not be read |
+| `1` | at least one file had problems |
 | `2` | bad usage |
+| `3` | a file could not be read |
+
+`3` takes precedence over `1`: if any file failed to open, the run did not check what you
+asked it to, which is more urgent than bad content in the files that did open. The other
+files are still checked and still reported.
 
 ## What it checks
 

@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from jsonl_lint.cli import EXIT_OK, EXIT_PROBLEMS, main
+from jsonl_lint.cli import EXIT_IO, EXIT_OK, EXIT_PROBLEMS, main
 
 
 def _problem_lines(out):
@@ -77,7 +77,7 @@ def test_one_bad_file_fails_the_whole_run(jsonl):
 
 
 def test_missing_file_reports_and_fails(capsys):
-    assert main(["does-not-exist.jsonl"]) == EXIT_PROBLEMS
+    assert main(["does-not-exist.jsonl"]) == EXIT_IO
     assert "does-not-exist.jsonl" in capsys.readouterr().err
 
 
@@ -110,3 +110,30 @@ def test_duplicate_appears_in_the_summary(jsonl, capsys):
     path = jsonl("dupes.jsonl", '{"a": 1}\n{"a": 1}\n')
     main([path, "--check-duplicates"])
     assert "duplicate=1" in capsys.readouterr().out
+
+
+def test_unreadable_file_gets_its_own_exit_code(capsys):
+    assert main(["does-not-exist.jsonl"]) == EXIT_IO
+
+
+def test_content_problems_still_exit_one(jsonl):
+    assert main([jsonl("bad.jsonl", "nope\n")]) == EXIT_PROBLEMS
+
+
+def test_io_failure_outranks_content_problems(jsonl):
+    # The run did not check what the caller asked for, which is the more
+    # urgent thing to report.
+    bad = jsonl("bad.jsonl", "nope\n")
+    assert main(["missing.jsonl", bad]) == EXIT_IO
+
+
+def test_io_failure_does_not_suppress_the_other_files_output(jsonl, capsys):
+    bad = jsonl("bad.jsonl", "nope\n")
+    main(["missing.jsonl", bad])
+    out = capsys.readouterr()
+    assert "invalid-json" in out.out
+    assert "missing.jsonl" in out.err
+
+
+def test_a_clean_run_is_still_zero(jsonl):
+    assert main([jsonl("good.jsonl", '{"a": 1}\n')]) == EXIT_OK
