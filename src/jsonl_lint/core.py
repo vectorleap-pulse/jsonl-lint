@@ -55,7 +55,12 @@ class Report:
         return counts
 
 
-def iter_problems(lines: Iterable[str], *, require_object: bool = False) -> Iterator[Problem]:
+def iter_problems(
+    lines: Iterable[str],
+    *,
+    require_object: bool = False,
+    check_duplicates: bool = False,
+) -> Iterator[Problem]:
     """Yield a :class:`Problem` for every defect in ``lines``.
 
     ``lines`` is any iterable of strings with or without trailing newlines, so
@@ -65,7 +70,13 @@ def iter_problems(lines: Iterable[str], *, require_object: bool = False) -> Iter
         objects. Most JSONL consumers -- fine-tuning APIs especially -- accept
         only objects, but the format itself permits any JSON value, so this is
         opt-in.
+    :param check_duplicates: also report lines whose parsed value equals an
+        earlier line's. Comparison is on the parsed value, so two records that
+        differ only in key order or whitespace still count as duplicates.
+        Holds one hash per distinct record in memory.
     """
+    seen: dict[str, int] = {}
+
     for number, raw in enumerate(lines, start=1):
         line = raw.rstrip("\n").rstrip("\r")
 
@@ -90,8 +101,23 @@ def iter_problems(lines: Iterable[str], *, require_object: bool = False) -> Iter
             kind = type(value).__name__
             yield Problem(number, "not-an-object", f"line is a JSON {kind}, not an object")
 
+        if check_duplicates:
+            # sort_keys so {"a":1,"b":2} and {"b":2,"a":1} collide, which is
+            # the point -- they are the same record to any consumer.
+            fingerprint = json.dumps(value, sort_keys=True, separators=(",", ":"))
+            first = seen.get(fingerprint)
+            if first is None:
+                seen[fingerprint] = number
+            else:
+                yield Problem(number, "duplicate", f"same record as line {first}")
 
-def check(lines: Iterable[str], *, require_object: bool = False) -> Report:
+
+def check(
+    lines: Iterable[str],
+    *,
+    require_object: bool = False,
+    check_duplicates: bool = False,
+) -> Report:
     """Check ``lines`` and return a :class:`Report`.
 
     Counts every non-blank line as a record, whether or not it parsed, so the
@@ -100,7 +126,13 @@ def check(lines: Iterable[str], *, require_object: bool = False) -> Report:
     report = Report()
     materialised = list(lines)
 
-    report.problems = list(iter_problems(materialised, require_object=require_object))
+    report.problems = list(
+        iter_problems(
+            materialised,
+            require_object=require_object,
+            check_duplicates=check_duplicates,
+        )
+    )
     report.records = sum(1 for raw in materialised if raw.strip())
     return report
 
